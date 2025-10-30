@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Switchboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+
+    #chat-box {
+      width: 70%;
+      max-width: 800px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    #messages {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      background: #fafafa;
+      margin-bottom: 20px;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .user {
+      background: #e6f0ff;
+      color: #004085;
+      text-align: right;
+    }
+
+    .bot {
+      background: #e8f5e9;
+      color: #1b5e20;
+      text-align: left;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+      font-size: 14px;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 15px 0;
+      padding: 10px;
+      background: #f1f1f1;
+      border-radius: 6px;
+    }
+
+    #model-section.hidden {
+      display: none;
+    }
+
+    #rag-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    #rag-section.hidden {
+      display: none;
+    }
+
+    #rag-section label {
+      flex: 1;
+    }
+
+    #file-upload {
+      flex: 2;
+    }
+
+    #rag-section button {
+      flex-shrink: 0;
+      padding: 10px 15px;
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #rag-section button:hover {
+      background: #005fa3;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .button-group button {
+      padding: 10px 15px;
+      border: none;
+      background: #0078d7;
+      color: white;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .button-group button:hover {
+      background: #005fa3;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-box">
+    <h2>AI Switchboard</h2>
+    <div id="messages"></div>
+
+    <!-- Toggle Button for Mode -->
+    <div class="toggle-switch">
+      <label for="rag-toggle">Enable RAG:</label>
+      <input type="checkbox" id="rag-toggle" onchange="toggleMode()" />
+    </div>
+
+    <!-- Model Selection -->
+    <div id="model-section">
+      <label for="model-select">Choose Model:</label>
+      <select id="model-select">
+        <option value="azure-openai">Azure OpenAI</option>
+        <option value="huggingface">Hugging Face</option>
+      </select>
+    </div>
+
+    <!-- File Upload for RAG -->
+    <div id="rag-section" class="hidden">
+      <label for="file-upload">Upload PDF for RAG:</label>
+      <input type="file" id="file-upload" accept=".pdf" />
+      <button onclick="uploadFile()">Upload</button>
+    </div>
+
+    <!-- System Message Input -->
+    <div>
+      <label for="system-message">System Message:</label>
+      <input type="text" id="system-message" placeholder="You are a helpful AI assistant." />
+    </div>
+
+    <!-- User Message Input -->
+    <div>
+      <label for="user-input">User Message:</label>
+      <input type="text" id="user-input" placeholder="Type your message..." />
+    </div>
+
+    <!-- Buttons -->
+    <div class="button-group">
+      <button onclick="sendMessage()">Send</button>
+      <button onclick="resetChat()">Reset Chat</button>
+    </div>
+  </div>
+
+  <script>
+    let history = [];
+    let totalTokens = 0;
+    let ragEnabled = false;
+
+    function toggleMode() {
+      ragEnabled = document.getElementById("rag-toggle").checked;
+      document.getElementById("model-section").classList.toggle("hidden", ragEnabled);
+      document.getElementById("rag-section").classList.toggle("hidden", !ragEnabled);
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("user-input");
+      const message = input.value.trim();
+      const systemMessage = document.getElementById("system-message").value.trim() || "You are a helpful AI assistant.";
+      const selectedModel = document.getElementById("model-select").value;
+
+      if (!message) return;
+
+      addMessage("You: " + message, "user");
+      input.value = "";
+
+      const processingDiv = addMessage("Agent is typing...", "bot", true);
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, history, system_message: systemMessage, model: selectedModel, rag_enabled: ragEnabled })
+        });
+
+        const data = await response.json();
+        processingDiv.remove();
+
+        if (!response.ok) {
+          addMessage("Error: " + data.reply, "error");
+          return;
+        }
+
+        let botText = `Agent: ${data.reply}`;
+        if (data.usage && Object.keys(data.usage).length) {
+          botText += ` (Tokens: Prompt=${data.usage.prompt_tokens}, Completion=${data.usage.completion_tokens}, Total=${data.usage.total_tokens})`;
+          totalTokens += data.usage.total_tokens || 0;
+        }
+
+        addMessage(botText, "bot");
+
+        history.push({ role: "user", content: message });
+        history.push({ role: "assistant", content: data.reply });
+
+      } catch (err) {
+        processingDiv.remove();
+        addMessage("Error: " + err.message, "error");
+      }
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById("file-upload");
+      if (!fileInput.files.length) {
+        alert("Please select a PDF file.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      try {
+        const response = await fetch("/upload_pdf", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        alert(data.message);
+      } catch (err) {
+        alert("Error uploading file: " + err.message);
+      }
+    }
+
+    function addMessage(text, role, processing=false) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message " + role;
+      msgDiv.textContent = text;
+      if (processing) msgDiv.id = "processing";
+      document.getElementById("messages").appendChild(msgDiv);
+      msgDiv.scrollIntoView({ behavior: "smooth" });
+      return msgDiv;
+    }
+
+    function resetChat() {
+      history = [];
+      totalTokens = 0;
+      document.getElementById("messages").innerHTML = "";
+    }
+  </script>
+</body>
+</html>
