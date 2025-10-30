@@ -103,4 +103,4 @@ def handle_chat(data):
 
     except Exception as e:
         logger.error(f"Unhandled error in chat flow: {e}", exc_info=True)
-        return jsonify({"reply": "Internal server error"}), 500
+        return jsonify({"reply": str(e)}), 500
