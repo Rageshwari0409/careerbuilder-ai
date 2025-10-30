@@ -12,7 +12,7 @@ setup_logging()
 def register_routes(app):
     @app.route("/")
     def index():
-        return render_template("chat1.html")
+        return render_template("chat.html")
 
     @app.route("/upload_pdf", methods=["POST"])
     def upload_pdf():

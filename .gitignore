@@ -34,3 +34,6 @@ uploads/
 
 # Cache
 .cache/
+
+# chat history
+chat_history.json
