@@ -10,7 +10,7 @@ from langchain.memory.chat_message_histories import FileChatMessageHistory
 from huggingface_hub import InferenceClient
 from config.config import AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, DEPLOYMENT_NAME, HUGGINGFACEHUB_API_TOKEN
 from utils.logger import setup_logging
-from clients.llm_clients import get_azure_openai_client, get_huggingface_client
+from clients.llm_clients import get_azure_openai_client, get_huggingface_client, initialize_huggingface_endpoint
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import logging
 
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 logger.info("Initializing LLM clients...")
 client = get_azure_openai_client()
 client_hf = get_huggingface_client()
+client_hf_endpoint = initialize_huggingface_endpoint()
 logger.info("LLM clients initialized successfully.")
 
 def validate_input(user_message):
@@ -83,9 +84,9 @@ def handle_chat(data):
         if rag_enabled:
             logger.info("RAG flow enabled. Delegating to RAG service.")
             from services.rag_service import handle_rag_flow
-            reply = handle_rag_flow(user_message)
+            reply = handle_rag_flow(user_message,system_message,model)
             logger.debug(f"RAG response: {reply}")
-            return jsonify({"reply": reply['result']})
+            return jsonify({"reply": reply})
 
         elif model == "huggingface":
             logger.info("Using Hugging Face model for chat.")
