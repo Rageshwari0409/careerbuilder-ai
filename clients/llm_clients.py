@@ -15,11 +15,7 @@ retry_decorator = retry(
 )
 
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def get_azure_openai_client():
     return AzureChatOpenAI(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -29,22 +25,14 @@ def get_azure_openai_client():
         temperature=0
     )
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def get_huggingface_client():
     return InferenceClient(
         model="mistralai/Mistral-7B-Instruct-v0.3",
         token=HUGGINGFACEHUB_API_TOKEN
     )
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def initialize_azure_openai_embeddings():
     return AzureOpenAIEmbeddings(
         deployment="text-embedding-3-small",
@@ -56,30 +44,18 @@ def initialize_azure_openai_embeddings():
         chunk_size=1000
     )
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def initialize_pinecone_client():
     pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
     return pc
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def initialize_huggingface_embeddings():
     # Placeholder for Hugging Face embeddings initialization
     embeddings = HuggingFaceEndpointEmbeddings(model="sentence-transformers/all-mpnet-base-v2", huggingfacehub_api_token=HUGGINGFACEHUB_API_TOKEN)
     return embeddings
 
-@retry_decorator(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((TimeoutError, ConnectionError, ValueError))
-)
+@retry_decorator
 def initialize_huggingface_endpoint():
     repo_id = "mistralai/Mistral-7B-Instruct-v0.3"
     llm = HuggingFaceEndpoint(

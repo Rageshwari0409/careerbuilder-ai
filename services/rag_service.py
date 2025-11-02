@@ -39,16 +39,18 @@ def process_pdf():
 
 def setup_pinecone_index(pc,index_name,dimension):
     try:
-        if index_name not in pc.list_indexes().names():
-            logger.info(f"📦 Creating Pinecone index: {index_name}")
-            pc.create_index(
-                name=index_name,
-                dimension=dimension,
-                metric="cosine",
-                spec=pinecone.ServerlessSpec(cloud="aws", region="us-east-1")
-            )
-        else:
-            logger.info(f"✅ Pinecone index '{index_name}' already exists.")
+        index_list = pc.list_indexes().names()
+        logger.debug(f"📋 Existing Pinecone indexes: {index_list}")
+        if index_name in index_list:
+            pc.delete_index(index_name)
+            logger.info(f"🗑️ Deleted existing Pinecone index: {index_name}")        
+        logger.info(f"📦 Creating Pinecone index: {index_name}")
+        pc.create_index(
+            name=index_name,
+            dimension=dimension,
+            metric="cosine",
+            spec=pinecone.ServerlessSpec(cloud="aws", region="us-east-1")
+        )
     except Exception as e:
         logger.error("❌ Error managing Pinecone index", exc_info=True)
         return {"result": f"Error managing Pinecone index: {str(e)}"}
